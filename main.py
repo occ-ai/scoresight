@@ -24,6 +24,7 @@ from PySide6.QtCore import (
     QObject,
     QCoreApplication,
     QEvent,
+    QMetaMethod,
 )
 from dotenv import load_dotenv
 from os import path
@@ -927,7 +928,11 @@ class MainWindow(QMainWindow):
             self.ui.comboBox_camera_source.addItem(source.description, source)
 
         self.ui.comboBox_camera_source.setEnabled(True)
-        self.ui.comboBox_camera_source.currentIndexChanged.disconnect()
+        currentIndexChangedSignal = QMetaMethod.fromSignal(
+            self.ui.comboBox_camera_source.currentIndexChanged
+        )
+        if self.ui.comboBox_camera_source.isSignalConnected(currentIndexChangedSignal):
+            self.ui.comboBox_camera_source.currentIndexChanged.disconnect()
         self.ui.comboBox_camera_source.currentIndexChanged.connect(self.sourceChanged)
 
         # enable the source view frame

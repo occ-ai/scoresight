@@ -93,6 +93,33 @@ There are some extra steps for installation on Windows:
  - Download and install https://visualstudio.microsoft.com/visual-cpp-build-tools/ C++ Build Tools
  - Build the win32DeviceEnum pyd by `$ cd win32DeviceEnum && python.exe setup.py build_ext --inplace`
 
+#### MacOS
+
+On Mac, and particularly on Arm64, you will need to install dependencies manually.
+This is reflected in the ./github/actions/build.yaml file.
+
+1. [cyndilib](https://github.com/nocarryr/cyndilib)
+
+Get the project from the repo and build it locally
+```
+$ git clone https://github.com/nocarryr/cyndilib.git
+$ cd cyndilib
+$ pip install setuptools numpy cython
+$ pip install .
+```
+
+2. [tesserocr](https://github.com/sirfz/tesserocr)
+
+Get the project from the repo and built it locally.
+This assumes you have Homewbrew in `/opt/homebrew` but if it's in `/usr/local` then there's no need for the extra flagging.
+
+```
+$ git clone https://github.com/sirfz/tesserocr.git
+$ cd tesserocr
+$ /opt/homebrew/brew install tesseract leptonica
+$ PATH="$PATH:/opt/homebrew/bin" CPPFLAGS="-I/opt/homebrew/include -L/opt/homebrew/lib" python3 -m pip install --no-binary tesserocr tesserocr
+```
+
 ### Running from source
 
 1. Compile the UI files into Python:
