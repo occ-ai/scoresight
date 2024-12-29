@@ -17,7 +17,7 @@ from storage import (
 )
 from text_detection_target import TextDetectionTarget, TextDetectionTargetWithResult
 from sc_logging import logger
-from resizable_rect import ResizableRectWithNameTypeAndResult
+from resizable_rect import MiniRect, ResizableRectWithNameTypeAndResult
 
 
 def sort_points_clockwise(points: list[QGraphicsRectItem]) -> list[QGraphicsRectItem]:
@@ -183,6 +183,19 @@ class ImageViewer(CameraView):
         for item in self.scene.items():
             if isinstance(item, ResizableRectWithNameTypeAndResult):
                 item.setSelected(item.name == name)
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Delete:
+            for item in self.scene.items():
+                if item.isSelected():
+                    if isinstance(item, MiniRect):
+                        # If there are mini-rects, delete the selected mini-rect
+                        item.parentItem().removeMiniRect(item)
+                    if isinstance(item, ResizableRectWithNameTypeAndResult):
+                        # If no mini-rects, send a signal to delete the box itself
+                        self.removeBox(item.name)
+        else:
+            super().keyPressEvent(event)
 
     def mousePressEvent(self, event: QMouseEvent | None) -> None:
         if event.button() == Qt.MouseButton.MiddleButton:

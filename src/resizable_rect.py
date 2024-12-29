@@ -199,7 +199,7 @@ class ResizableRectWithNameTypeAndResult(ResizableRect):
         self.itemSelectedCallback = itemSelectedCallback
         self.extraBoxes = []
         self.cornerBoxes = []
-        self.cornerSize = 20
+        self.cornerSize = 14
 
         self.posItem = QGraphicsSimpleTextItem("{}".format(self.name), parent=self)
         self.resultItem = QGraphicsSimpleTextItem("{}".format(self.result), parent=self)
@@ -243,6 +243,8 @@ class ResizableRectWithNameTypeAndResult(ResizableRect):
     def setMiniRectMode(self, enabled):
         self.mini_rect_mode = enabled
         self.add_button.setVisible(enabled)
+        if not enabled:
+            self.clearMiniRects()
 
     def setupTextItems(self, image_size, boxDisplayStyle):
         self.posItem.setBrush(QBrush(QColor("red")))
@@ -436,6 +438,10 @@ class ResizableRectWithNameTypeAndResult(ResizableRect):
             parent=self,
         )
         self.mini_rects.append(new_mini_rect)
+
+    def removeMiniRect(self, mini_rect):
+        self.mini_rects.remove(mini_rect)
+        self.scene().removeItem(mini_rect)
 
     def clearMiniRects(self):
         for mini_rect in self.mini_rects:
