@@ -199,7 +199,7 @@ class TimerThread(QThread):
         subscribe_to_data(
             "scoresight.json", "detection_cadence", self.setUpdateFrameInterval
         )
-        self.preview_frame_interval = 1000
+        self.preview_frame_interval = self.frame_interval  # match camera frame rate for smooth preview
         self.fps = 1000 / self.frame_interval  # frames per second
         self.pps = 1000 / self.preview_frame_interval  # previews per second
         self.ups = 1000 / self.update_frame_interval  # updates per second
@@ -345,20 +345,7 @@ class TimerThread(QThread):
                 )
             self.last_frame_timestamp = current_time
 
-            # check that enough time has passed since last update
-            time_diff_ms = (
-                current_time - self.last_update_timestamp
-            ).total_seconds() * 1000
-            if time_diff_ms < self.update_frame_interval:
-                # dump this frame since not enough time has passed
-                self.sleep_fps_target()
-                continue
-            # process this frame
-            self.last_update_timestamp = current_time
-            self.ups = (
-                self.fps_alpha * (1000 / time_diff_ms)
-                + (1.0 - self.fps_alpha) * self.ups
-            )
+            # ----- Apply transforms (fast) on every frame -----
 
             # apply rotation if set
             if self.crop.rotation != 0:
@@ -390,6 +377,38 @@ class TimerThread(QThread):
                 frame_rgb = cv2.warpPerspective(
                     frame_rgb, self.homography, (frame_rgb.shape[1], frame_rgb.shape[0])
                 )
+
+            # ----- Emit preview at real-time frame rate (decoupled from OCR) -----
+            time_diff_prev = (current_time - self.last_emit_time).total_seconds() * 1000
+            if time_diff_prev >= self.preview_frame_interval:
+                if self.show_binary:
+                    gray_preview = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2GRAY)
+                    _, binary_preview = cv2.threshold(
+                        gray_preview, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU
+                    )
+                    self.update_signal.emit(binary_preview)
+                else:
+                    self.update_signal.emit(frame_rgb)
+                self.last_emit_time = current_time
+                self.pps = (
+                    self.fps_alpha * (1000 / time_diff_prev)
+                    + (1.0 - self.fps_alpha) * self.pps
+                )
+
+            # ----- OCR processing at its own slower cadence -----
+            time_since_update = (
+                current_time - self.last_update_timestamp
+            ).total_seconds() * 1000
+            if time_since_update < self.update_frame_interval:
+                # not time for OCR yet, skip to next frame
+                self.sleep_fps_target()
+                continue
+            # process this frame for OCR
+            self.last_update_timestamp = current_time
+            self.ups = (
+                self.fps_alpha * (1000 / time_since_update)
+                + (1.0 - self.fps_alpha) * self.ups
+            )
 
             gray = cv2.cvtColor(frame_rgb, cv2.COLOR_BGR2GRAY)
             _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
@@ -432,19 +451,6 @@ class TimerThread(QThread):
                         ocr_training_data_options.save_ocr_results_to_folder(
                             binary, gray, results
                         )
-
-            # Emit the signal to update the pixmap once per second
-            time_diff_prev = (current_time - self.last_emit_time).total_seconds() * 1000
-            if time_diff_prev >= self.preview_frame_interval:
-                if self.show_binary:
-                    self.update_signal.emit(binary)
-                else:
-                    self.update_signal.emit(frame_rgb)
-                self.last_emit_time = current_time
-                self.pps = (
-                    self.fps_alpha * (1000 / time_diff_prev)
-                    + (1.0 - self.fps_alpha) * self.pps
-                )
 
             self.sleep_fps_target()
 
